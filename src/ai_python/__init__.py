@@ -1,12 +1,12 @@
+from dotenv import load_dotenv
+load_dotenv()
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from ai_python.Controllers import ingestController,chatController
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
-from dotenv import load_dotenv
 import os
 
-load_dotenv()
 
 uri = os.environ.get("MONGO_URI")
 client = MongoClient(uri, server_api=ServerApi("1"))
