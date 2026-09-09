@@ -1,0 +1,44 @@
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_huggingface import HuggingFaceEmbeddings
+
+# Initialize the embedding model (you can choose any supported model)
+embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+def chunk_text(input_text: str, chunk_size: int = 500, chunk_overlap: int = 50):
+    """
+    Splits a string into chunks using LangChain's RecursiveCharacterTextSplitter.
+
+    Args:
+        input_text (str): The text to split.
+        chunk_size (int): Maximum size of each chunk (default 500).
+        chunk_overlap (int): Overlap between chunks (default 50).
+
+    Returns:
+        List[str]: List of text chunks.
+    """
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", " ", ""]
+    )
+    chunks = splitter.split_text(input_text)
+    return chunks
+
+
+def get_chunk_embedding(chunk: str):
+    """
+    Takes a single text chunk and returns its embedding vector.
+    
+    Args:
+        chunk (str): The text chunk to embed.
+    
+    Returns:
+        List[float]: Embedding vector for the chunk.
+    """
+    embedding = embedding_model.embed_query(chunk)
+    return embedding
+
+# Example usage
+# vector = get_chunk_embedding(result[0])
+# print("Embedding length:", len(vector))
+# print("First 10 values:", vector[:10])
