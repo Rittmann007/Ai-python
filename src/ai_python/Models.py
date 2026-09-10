@@ -10,4 +10,5 @@ class InterviewRequest(BaseModel):
 class ChatRequest(BaseModel):
     interviewID: str
     userID: str
+    sessionID: str
     message: str

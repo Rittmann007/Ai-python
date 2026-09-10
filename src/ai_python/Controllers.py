@@ -5,9 +5,18 @@ from fastapi import Request,HTTPException
 from fastapi.responses import JSONResponse
 from bson import ObjectId
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+from operator import itemgetter
+from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+
+_session_store: dict[str, InMemoryChatMessageHistory] = {}
+
+def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
+    if session_id not in _session_store:
+        _session_store[session_id] = InMemoryChatMessageHistory()
+    return _session_store[session_id]
 
 # payload is the JSON body the client sends to your endpoint. request is the full FastAPI request object.
 # In controller:
@@ -59,6 +68,9 @@ async def chatController(payload:ChatRequest,request:Request):
     client = request.app.state.mongo_client
     collection=client["Genai_resumeChecker"]["ragCollection"]
 
+    if not ObjectId.is_valid(payload.interviewID):
+        raise HTTPException(status_code=400, detail="Invalid interviewID")
+
     llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite")
     
     def format_docs(docs):
@@ -86,22 +98,35 @@ async def chatController(payload:ChatRequest,request:Request):
     prompt= ChatPromptTemplate.from_messages(
         [
             ("system", SYSTEM_PROMPT),
+            MessagesPlaceholder(variable_name="history"),
             ("human","{question}")
         ]
     )
     
-    chain= (
-        {"context": lambda q: format_docs(get_query_results(q,collection,payload.interviewID)),
-          "question": RunnablePassthrough()
+    base_chain= (
+        {"context": lambda q: format_docs(get_query_results(q["question"],collection,payload.interviewID)),
+          "question": itemgetter("question"),
+          "history": itemgetter("history")
         }
         | prompt
         | llm
         | StrOutputParser()
     )
 
-    response = chain.invoke(payload.message)
+    chain_with_memory = RunnableWithMessageHistory(
+        base_chain,
+        get_session_history,
+        input_messages_key="question",
+        history_messages_key="history",
+    )
+
+    response = chain_with_memory.invoke(
+        {"question": payload.message},
+        config={"configurable": {"session_id": payload.sessionID}},
+    )
+
     return {
         "message": "response given successfully",
-        "response": response
+        "response": response,
     }
     
