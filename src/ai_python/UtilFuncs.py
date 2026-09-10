@@ -51,6 +51,17 @@ def get_chunk_embedding(chunk: str):
 # print("First 10 values:", vector[:10])
 
 def get_query_results(query: str,collection,interviewID):
+    """
+        give relevent chunks related to query filtered by interviewID
+    
+        Args:
+            query (str): The query of the user.
+            collection (str): the collection var of the db collection querying on
+            interviewID (str): id of the interview report
+    
+        Returns:
+            List[{"text": val}]: List of dicts.
+    """
     query_embedding = get_chunk_embedding(query)
     pipeline = [
         {

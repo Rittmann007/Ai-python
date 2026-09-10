@@ -1,0 +1,21 @@
+ingest:
+takes the input data
+|
+chunks the input
+|
+embeds every chunk
+|
+stores the embedding with the corresponding input data and interviewID(for filtering)
+
+chat:
+takes the query
+|
+embeds it
+|
+matches with the other embeddings in the db filtered by interviewID
+|
+takes out the matching data
+|
+puts it in context along with query
+|
+gives to the llm, returns the result
