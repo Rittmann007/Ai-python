@@ -1,0 +1,68 @@
+ℹ️RAG(retrieval augmented generation)-
+any llm we are using has a knowledge cutoff, but now it can search the web to get relevant results
+but if any document is private to a user, then the llm has no way accessing it
+now the user can feed the document to the llm so that it can ans any question related to that doc.
+
+
+but there are problems in this process,
+we have a thing called,
+ℹ️context window(
+    The context window refers to the set of tokens (words, characters, or symbols) 
+    that a language model can "see" and process at once when generating or interpreting text.
+     It defines the maximum span of text the model can consider for predictions. 
+     For example, if a model has a 4,000‑token context window, 
+     it can only take into account the most recent 4,000 tokens of input and conversation history. 
+     Anything beyond that is truncated or forgotten. 
+     A larger context window allows the model to handle longer documents, maintain continuity over extended conversations,
+      and capture more nuanced dependencies between distant parts of text.
+)
+
+if we feed the whole doc at once while generating response, then easily the context window can be full and the model
+would not take into account many sections of the input.
+ℹ️chunking-
+to solve this we chunk the input document into many fix size parts while storing
+and based on the query we pull out the relevant chunk and internally add it to the query before
+passing it into the llm. we also overlap the chunks while storing so, one chunk would have some
+context of the other chunk.
+
+ℹ️embedding-
+so how do it pulls the relevant chunk based on the query?
+it does it by matching meaning not keyword.
+and how do it matches meaning?
+here comes the concept of embedding,
+the chunks are converted into a numerical representation (ℹ️vector) that catches the meaning of the chunk
+this process is called vector embedding. And the vectors are stored along with the respective chunk for later retrieval.
+
+the database with stores this embeddings and works on it, called a vector database
+this storing of the embedding, is called, ℹ️Indexing
+
+now when the user gives a query, we embed it too
+and we query the vectorDB to get the relevent chunks based on semantic/meaning(not on keywords like other databases)
+.this is called, ℹ️retrieval
+
+then we add the chunk along with query prompt and the llm gives us relevant results
+
+
+
+overview-
+
+1.Document Ingestion
+Collect raw data (PDFs, web pages, reports, etc.).
+
+2.Chunking
+Split documents into smaller, manageable text segments (e.g., paragraphs or 512‑token chunks).
+
+3.Embedding / Indexing
+Convert chunks into vector embeddings using an embedding model.
+Store them in a vector database (e.g., Pinecone, Weaviate, FAISS).
+
+4.Retrieval
+At query time, embed the user’s question.
+Search the vector database for the most semantically similar chunks.
+
+5.Augmentation
+Combine the retrieved chunks with the original query to form an augmented prompt.
+
+6.Generation
+Pass the augmented prompt to the language model.
+The LLM produces a grounded answer using both its training and the retrieved context.

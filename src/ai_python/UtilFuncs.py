@@ -56,7 +56,7 @@ def get_query_results(query: str,collection,interviewID):
     
         Args:
             query (str): The query of the user.
-            collection (str): the collection var of the db collection querying on
+            collection (str): A mongodb collection object
             interviewID (str): id of the interview report
     
         Returns:
