@@ -42,8 +42,6 @@ and we query the vectorDB to get the relevent chunks based on semantic/meaning(n
 
 then we add the chunk along with query prompt and the llm gives us relevant results
 
-
-
 overview-
 
 1.Document Ingestion
@@ -66,3 +64,99 @@ Combine the retrieved chunks with the original query to form an augmented prompt
 6.Generation
 Pass the augmented prompt to the language model.
 The LLM produces a grounded answer using both its training and the retrieved context.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+
+ℹ️Langchain-
+is a integration framework that turns a raw language model into a functional,connected application
+
+when we have an llm model,it can't web search,have a knowledge cutoff,dont have memory of past conversations
+these are some basic things, and it cannot lookup databases or do any other thing on its own.
+
+here comes langchain, it gives the llm these tools so that it can do tasks
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ℹ️ What Runnables Are
+Definition: A Runnable is a generic unit of work in LangChain. It could be:
+
+A function (RunnableLambda)
+A sequence of steps (RunnableSequence)
+A parallel mapping (RunnableParallel)
+A router or branch (RouterRunnable, RunnableBranch)
+
+Purpose: They unify execution so you can call .invoke(), .batch(), .stream(), or .ainvoke() on any runnable, regardless of what it wraps.
+
+⚙️ Core Methods
+invoke(input) / ainvoke(input) → Run once, sync or async.
+batch(inputs) / abatch(inputs) → Run multiple inputs efficiently.
+stream(input) / astream(input) → Stream outputs as they’re produced.
+astream_log(input) → Stream outputs plus intermediate steps.
+
+All methods accept optional config for metadata, tracing, retries, or debugging.
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+In LangChain, a ℹ️callable simply means something you can call like a function.
+
+🔎 What “callable” means in Python
+In Python, any object that implements the __call__ method is considered callable.
+
+Functions, methods, and classes (when instantiated) are all callables.
+Example:    
+def add(x, y): 
+    return x + y
+
+print(callable(add))  # True
+
+📌 In LangChain context
+LangChain uses callables to represent components that can be executed in a chain or pipeline:
+
+LLMs → You can call them with .invoke("prompt").
+Tools → Functions wrapped as callables so the chain can execute them.
+Runnables → They unify everything under a callable interface (invoke, batch, stream).
+
+ In short: A callable in LangChain is any object (LLM, tool, runnable, function) that can be executed like a function.
+ This makes it easy to plug different components together in workflows because they all share the same “callable” interface.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+ *********
+ When you put a plain Python dict at the start of (or inside) an LCEL chain, LangChain auto-wraps it into a RunnableParallel. 
+ This means: take the single input coming into the chain, run it through all three dict values independently (conceptually in parallel), 
+ and produce a new dict whose keys are context, question, history and whose values are each function's output.
+
+So the input to base_chain.invoke(...) is a single dict, e.g.:
+python
+{"question": "What was my interview feedback?"}
+
+(history gets injected separately by RunnableWithMessageHistory before this — more on that below.)
+That one input dict gets fanned out to all three branches:
+
+"context": lambda q: format_docs(get_query_results(q["question"], collection, payload.interviewID))
+q here is the entire input dict (not just a string) — that's why it does q["question"] to pull the actual question text out.
+Calls your earlier get_query_results function → runs the MongoDB $vectorSearch → gets back [{"text": ...}, {"text": ...}, ...].
+format_docs joins those into one string with "\n\n" between chunks.
+
+Result: a single string of concatenated context, assigned to the context key.
+"question": itemgetter("question")
+itemgetter("question") (from Python's operator module) is a callable that does lambda x: x["question"]. LangChain treats plain callables like this as Runnables too.
+So this just extracts input["question"] and passes it through unchanged.
+
+"history": itemgetter("history")
+Same pattern — pulls input["history"] through unchanged.
+Note: at the base_chain level, history isn't actually provided by you — 
+it gets added to the input dict automatically by the RunnableWithMessageHistory wrapper (covered below), 
+which injects the loaded message list under the key "history" before calling base_chain.
+
+After this dict/RunnableParallel runs, you get a new dict:
+
+python
+{
+  "context": "chunk1 text\n\nchunk2 text\n\n...",
+  "question": "What was my interview feedback?",
+  "history": [HumanMessage(...), AIMessage(...), ...]
+}
+
+Why this shape matters
+
+This dict's keys exactly match the template variables prompt expects: {context} in the system prompt,
+{question} in the human message template, and the history variable name declared in MessagesPlaceholder(variable_name="history").
+LCEL doesn't do this matching magically — it's just that ChatPromptTemplate.invoke() expects a dict with those specific keys,
+ and this parallel step's job is to assemble exactly that dict.

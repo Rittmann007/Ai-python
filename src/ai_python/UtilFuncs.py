@@ -26,7 +26,7 @@ def chunk_text(input_text: str, chunk_size: int = 500, chunk_overlap: int = 50):
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
-        separators=["\n\n", "\n", " ", ""]
+        separators=["\n\n", "\n", " ", ""]# split the chunks based on paragraph,line(if chunk>size),word,character
     )
     chunks = splitter.split_text(input_text)
     return chunks
@@ -60,24 +60,25 @@ def get_query_results(query: str,collection,interviewID):
             interviewID (str): id of the interview report
     
         Returns:
-            List[{"text": val}]: List of dicts.
+            List[{"text": val},{},{}...]: List of dicts.
     """
     query_embedding = get_chunk_embedding(query)
     pipeline = [
         {
             "$vectorSearch": {
-                "index": "vector_index",
-                "queryVector": query_embedding,
-                "path": "embedding",
-                "numCandidates": 384,
-                "limit": 5,
+                "index": "vector_index",# name of the pre-built Atlas vector search index on this collection
+                "queryVector": query_embedding,# the vector to search with
+                "path": "embedding",# the field in each document holding the stored chunk embedding
+                "numCandidates": 384,# how many candidate documents the approximate-nearest-neighbor algorithm examines before narrowing down
+                "limit": 5,# return only the top 5 closest matches
                 "filter": {
-                    "interviewID": ObjectId(interviewID)
+                    "interviewID": ObjectId(interviewID)# pre-filters the search to only documents belonging to that specific interview
+                    # Note: this requires interviewID to be indexed as a filterable field in the vector index definition
                 }
             }
         },
         {
-            "$project": {
+            "$project": {# shapes the output: drops _id, keeps only the text field of each matched chunk.
                 "_id": 0,
                 "text": 1
             }
